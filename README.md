@@ -1,178 +1,102 @@
-<<<<<<< HEAD
-# RedPiston — AutoSpace ⚙️
+# RedPiston — Shop App
 
-> **The OS for India's Auto Parts Industry.**  
-> A hyper-modern B2B2C SaaS platform bridging the gap between traditional auto part retailers (ERP/POS) and the digital consumer market (Marketplace).
+The owner/staff/mechanic-facing frontend for RedPiston. If you're a shop
+owner running your parts inventory and billing, or a car-decor/detailing
+shop managing bookings, or a mechanic working job cards — this is the app
+you're in.
 
-[![Version](https://img.shields.io/badge/version-2.1.0-amber.svg)](https://github.com/shivakumar-07/GearItUp_Exp)
-[![Tech](https://img.shields.io/badge/Tech-React%2019%20%2B%20Vite%20%2B%20Node.js-blue.svg)](https://vitejs.dev/)
-[![Database](https://img.shields.io/badge/Database-PostgreSQL%20(Supabase)-emerald.svg)](https://supabase.com/)
+## Where this fits
 
----
+RedPiston is moving from one monolithic frontend into three apps sharing
+one backend and one database:
 
-## 🌟 The Core Value Proposition
+| App | Domain (planned) | Audience | Repo |
+|---|---|---|---|
+| Marketplace | `redpiston.com` | Public + customers | `red-piston-frontend` (current monolith, keeps this role) |
+| **Shop** (this repo) | `shop.redpiston.com` | Shop owner, staff, mechanic | `red-piston-shop` |
+| Admin | `admin.redpiston.com` | Platform admin | not split yet — still in `red-piston-frontend` |
+| Backend API | `api.redpiston.com` | all of the above | `red-piston-backend`, unchanged |
 
-AutoSpace is designed for the 98% of Indian auto parts retailers who still rely on manual registers or outdated offline software. 
+This repo was split off from `red-piston-frontend` by copying it whole and
+then deleting everything that isn't owner/staff/mechanic-facing — see
+`AGENT_NOTES.md` for exactly what was kept, dropped, and why. It is **not
+yet** wired to a separate domain or deployed anywhere; it's a local,
+independent app you can run and verify side by side with the monolith.
 
-1.  **For Shop Owners**: A lightning-fast, keyboard-driven ERP that handles multi-item GST billing, instant stock tracking, party ledgers (Udhaar), and staff management.
-2.  **For Customers**: A hyperlocal marketplace to find parts with a **Fitment Guarantee** based on their specific vehicle (Make → Model → Year → Variant).
-3.  **For Workshops**: A dedicated job-card system with Kanban-based workflow tracking, checklists, and automated WhatsApp invoicing.
+## What's in here
 
----
+- **Owner/staff ERP**: dashboard, inventory, POS billing (barcode scan +
+  PDF invoice), parties/ledger (Udhaar), job cards, purchase returns,
+  warranty, GSTR-1 export, staff management.
+- **Car-decor / services marketplace management**: a shop's own Services,
+  Storefront Settings, Portfolio, Bookings, and Reviews pages — the
+  owner-facing half of the customer booking flow (the customer-facing
+  half — search, book, review — lives in the marketplace app).
+- **Mechanic app**: a separate role/login (`/mechanic`) for mechanics
+  working job cards, either independently or attached to a shop.
 
-## 🛡️ Key Modules & Capabilities
+Everything here talks to the same backend and database as the other two
+apps — no separate schema, no separate API.
 
-### 🏢 1. ERP & POS (Retail Intelligence)
-*   **Keyboard-First POS**: Bulletproof billing with `Ctrl+K` command palette, `Ctrl+N` new bill, and barcode scanner integration (`Ctrl+B`).
-*   **Smart Inventory**: Detailed stock tracking with reorder alerts (shimmering UI indicators), bulk stock-in via master catalog search, and dead stock analysis.
-*   **Audit & Ledger**: Immutable transaction ledgers for every movement (Sale, Purchase, Return, Damage, Theft, Audit).
-*   **Party Management**: Digital *Khata* book with aging analysis (Green to Red buckets) and automated WhatsApp payment reminders for Udhaar.
-*   **One-Click GST**: Automated CGST/SGST/IGST calculation, GSTR-1 JSON export (Portal ready), and GSTR-3B worksheets.
-
-### 🔧 2. Workshop Management
-*   **Visual Job Cards**: Kanban-based workflow (Draft → Diagnosed → In Progress → Waiting Parts → Ready → Invoiced).
-*   **Time Tracking**: Real-time elapsed time monitoring for active jobs.
-*   **Service Checklists**: Standardized inspection and repair tasks to ensure quality control.
-*   **Integrated Billing**: Convert completed job cards directly into POS invoices with parts & labour breakdown.
-
-### 🌐 3. B2C Marketplace
-*   **Fitment Engine**: Search parts by OEM Number or Vehicle Fitment (Maruti, Hyundai, Tata, etc.).
-*   **Multi-Vendor Cart**: Shop from multiple local stores in a single checkout flow.
-*   **Reviews & Trust**: Verified purchase reviews with star ratings and helpfulness counts.
-*   **Real-Time Tracking**: Live order status updates (Placed → Accepted → Out for Delivery → Delivered).
-
----
-
-## 🛠️ Technology Stack
-
-| Layer | Recommended | Why |
-| :--- | :--- | :--- |
-| **Frontend** | React 19 + Vite | State-of-the-art performance, tiny bundle size, and ultra-fast HMR. |
-| **Backend** | Node.js + Express | Unified JS ecosystem. High concurrency for API requests. |
-| **Database** | PostgreSQL (Supabase) | Strict ACID compliance for financial integrity & relational fitment data. |
-| **ORM** | Prisma | Type-safe queries and automated schema migrations. |
-| **Auth** | Firebase + JWT | Phone OTP (primary) + Google login with sliding JWT session rotation. |
-| **Styling** | Vanilla CSS + Tokens | Zero runtime overhead. Custom design system with "Outfit" & "JetBrains Mono" fonts. |
-| **Notifications** | Resend + WhatsApp | Transactional emails and Business API integration (WATI/Interakt). |
-
----
-
-## 📂 Project Structure
-
-```
-├── src/                        # React frontend (Vite)
-│   ├── pages/                  # Core modules (Dashboard, Inventory, Workshop, etc.)
-│   ├── components/             # Reusable UI system (Btn, Input, Modal, StatCard)
-│   ├── marketplace/            # Independent B2C Storefront sub-app
-│   ├── api/                    # Networking (Axios client + background Sync engine)
-│   ├── theme.js                # Semantic design system (Colors, FONT, Global CSS)
-│   └── store.js                # Global state persistence & Business logic
-│
-├── backend/                    # Node.js Express server
-│   ├── prisma/                 # Schema & Migrations (PostgreSQL)
-│   ├── src/
-│   │   ├── routes/             # Feature-based API (Auth, Catalog, Billing, Staff)
-│   │   └── services/           # Business logic (Email, Firebase, OTP, PDF Gen)
-│   └── scripts/                # Database maintenance & migration tools
-│
-└── 📜 AutoMobile_DevGuide.md    # 90KB technical blueprint & roadmap
-```
-
----
-
-## 🚀 Getting Started
-
-### 1. Prerequisites
-*   Node.js (v18+)
-*   A Supabase project (for PostgreSQL)
-*   A Firebase project (for Auth)
-
-### 2. Setup Environment
-Clone the repo and create `.env` files:
+## Running it
 
 ```bash
-# Root .env (Frontend)
-VITE_FIREBASE_API_KEY=your_key
-VITE_API_URL=http://localhost:3001
-
-# backend/.env (Backend)
-DATABASE_URL="postgres://..."
-DIRECT_URL="postgres://..."
-JWT_SECRET="your_secret"
-FIREBASE_PROJECT_ID="..."
-RESEND_API_KEY="..."
-```
-
-### 3. Install & Start
-```bash
-# Install everything
 npm install
-cd backend && npm install && cd ..
-
-# Run Backend
-cd backend
-npm run dev
-
-# Run Frontend (New Terminal)
-npm run dev
+npm run dev      # http://localhost:5174
 ```
 
----
+Needs `red-piston-backend` running on `localhost:3001` (see that repo's
+own README). A `.env` file with `VITE_API_URL`, Firebase, and Sentry keys
+is required for full functionality — copy the shape from
+`red-piston-frontend`'s `.env` (same backend, same third-party projects).
 
-## 🏛️ API Quick Reference
+## Code layout
 
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `POST` | `/api/auth/request-otp` | Request Phone OTP (Rate limited) |
-| `POST` | `/api/billing/invoice` | Generate GST Invoice & deduct stock |
-| `GET` | `/api/catalog/search` | Master catalog search with fitment filters |
-| `GET` | `/api/shop/staff` | List staff members and permissions |
-| `POST` | `/api/marketplace/order`| Create multi-vendor marketplace order |
-| `GET` | `/api/dashboard/stats` | Pre-computed KPI metrics for shop owner |
+```
+src/
+├── App.tsx              # routes + auth/token lifecycle + business handlers
+├── main.tsx             # React root, providers (React Query, Store, Router)
+├── shells/               # ERPShell (owner/staff layout), MechanicShell
+├── pages/                # one file per ERP page + car-decor management pages
+├── pages/mechanic/       # mechanic app's own pages, under /mechanic
+├── context/
+│   ├── store.ts          # ERP data (products, movements, orders, parties...)
+│   └── AppCtx.ts         # auth, toast, business handlers (saveProduct, handleSale...)
+├── api/                  # one file per backend resource — thin fetch wrappers
+├── components/           # ERP-specific components (modals, barcode scanner...)
+├── components/ui/        # generic UI kit (Btn, Input, Modal, StatCard...) — no ERP logic
+└── theme.ts, store.ts, AppCtx.ts  # one-line re-export shims, see note below
+```
 
----
+**About the shim files** (`src/theme.ts`, `src/store.ts`, `src/AppCtx.ts`):
+these are one-line `export * from './styles/theme'` (etc) re-exports. Most
+of the codebase imports via the shim path (`../theme`, `../store`) rather
+than the real file (`../styles/theme.ts`, `../context/store.ts`) — that's
+the established convention here, not a mistake to "fix". Import via the
+shim unless you have a specific reason not to (a couple of files do import
+the real path directly, usually to avoid a circular import).
 
-## 📅 Roadmap: Three-Phase Vision
+## What changed in the split (for anyone diffing against red-piston-frontend)
 
-*   **Phase 1 (Pilot)**: Prototype to real-world use with 10 shops in Hyderabad. (Current Status: ✅ **90% Complete**)
-*   **Phase 2 (Scale)**: Delivery partner integration (Dunzo/Porter), Advanced GST filing, and Shop Mobile App.
-*   **Phase 3 (Expansion)**: Multi-city launch, OEM cross-reference engine, and AI-powered reorder suggestions.
+- Removed: `MPShell`, `AdminShell`, the whole customer marketplace (browse,
+  cart, checkout, order tracking, product pages), `SuperAdminPage`, and the
+  marketplace-only slice of the shared store (cart, vehicle selector,
+  app-mode toggle).
+- Renamed: `api/marketplace.ts` (a large customer-marketplace API client)
+  → `api/vehicleCatalog.ts`, trimmed to the two vehicle-lookup functions
+  this app actually uses (vehicle make/model dropdowns in Inventory and
+  Parties). The old file's other ~12 exports (search, cart, orders) had
+  zero consumers left once the marketplace pages were removed.
+- Removed entirely: `src/marketplace/` (a small delivery-ETA/mock-data
+  folder only reachable through the old `api/marketplace.ts` — dead once
+  that file was trimmed).
+- Not done yet: extracting `theme.ts` / `api/client.ts` / the UI kit into
+  a shared package used by all three apps. For now they're duplicated
+  between this repo and `red-piston-frontend` — a deliberate, documented
+  tradeoff (see `AGENT_NOTES.md`), not an oversight.
 
----
+## Full architecture reference
 
-## ⚖️ License & Contributions
-
-Proprietary Software — Developed by [Shiva Kumar](https://github.com/shivakumar-07). Internal use and authorized partners only.
-
----
-*Built with ❤️ for the Indian Auto Parts Market.*
-=======
-# RedPiston_Draft
-Development repository for RedPiston (AutoSpace), a B2B2C SaaS platform for India's auto parts ecosystem. This repo is used for active development, feature implementation, and collaboration among team members.
-# RedPiston (AutoSpace)
-
-## Overview
-REDpiston is a B2B2C SaaS platform designed to digitize India's auto parts retail ecosystem by connecting shop owners, vehicle owners, and workshops.
-
-## Key Features
-- Shop ERP & POS System
-- Vehicle Fitment Marketplace
-- Workshop Job Management
-- GST Compliance & Reporting
-- Multi-vendor cart & hyperlocal delivery
-
-## Tech Stack
-- Frontend: React + Vite
-- Backend: Node.js + Express
-- Database: PostgreSQL (Supabase)
-- Auth: Firebase
-
-## Project Structure
-- `/src` → Frontend
-- `/backend` → API & services
-- `/components` → UI & business logic
-
-##  Contributors
-- Intern Team (Development)
-- REDpiston Engineering Team
->>>>>>> 41299c002e45d6db0d761295c3e9a8a743a1ede2
+For the diagram, subdomain plan, and the reasoning behind the split, see
+the "RedPiston Architecture" PDF (delivered separately) — this README
+covers only what's specific to running and understanding this repo.

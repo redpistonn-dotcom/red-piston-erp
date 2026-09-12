@@ -3,7 +3,7 @@ import { T, FONT, SHADOWS } from "../theme";
 import { fmt, fmtDate, uid, downloadCSV, generateCSV } from "../utils";
 import { isValidMobile, cleanMobile, isValidGstin, cleanGstin, cleanVehicleReg, isValidEmail } from "../utils/validators";
 import { Btn, Input, Select, Modal, Field, Divider, MobileCard, MobileCardList, CardField, CardActions, useIsMobile, Skeleton } from "../components/ui";
-import { fetchVehicleManufacturers, fetchVehicleModelsByManufacturer } from "../api/marketplace";
+import { fetchVehicleManufacturers, fetchVehicleModelsByManufacturer } from "../api/vehicleCatalog";
 import { fetchPartyLedger, fetchParties, type LedgerEntry } from "../api/sync";
 import { createParty, getOverdueParties, deleteParty } from "../api/parties";
 import { fetchShopVehicles, createShopVehicle, updateShopVehicle } from "../api/shopVehicles";
