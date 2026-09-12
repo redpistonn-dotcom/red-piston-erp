@@ -1,0 +1,77 @@
+/* ── Base reset ──────────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Hide the up/down spinner buttons on number inputs — values are entered by
+   typing only (ticket 2607012; scroll/arrow-key changes are blocked in App.tsx). */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* ── Root — warm cream ERP palette (NOT dark) ────────────────────────────── */
+:root {
+  color-scheme: light;
+  color: #1C1B1B;
+  background-color: #F5F5F0;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  scrollbar-gutter: stable;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  overflow-x: hidden;
+  background: #F5F5F0;
+  color: #1C1B1B;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* ── Global loading spinner ──────────────────────────────────────────────── */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Usage: <span className="rp-spinner rp-spinner-sm|md|lg" /> */
+.rp-spinner {
+  display: inline-block;
+  border-radius: 50%;
+  border: 2.5px solid rgba(139, 113, 110, 0.2);
+  border-top-color: #8b1e1e;
+  animation: spin 0.75s linear infinite;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+.rp-spinner-sm { width: 14px; height: 14px; }
+.rp-spinner-md { width: 18px; height: 18px; }
+.rp-spinner-lg { width: 48px; height: 48px; border-width: 4px; }
+
+/* ── Print styles for invoices ───────────────────────────────────────────── */
+@media print {
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+}

@@ -1,0 +1,63 @@
+import * as Sentry from "@sentry/react";
+
+Sentry.init({
+  dsn: import.meta.env.VITE_SENTRY_DSN || '[YOUR_SENTRY_DSN]',
+  integrations: [
+    Sentry.browserTracingIntegration(),
+    Sentry.replayIntegration(),
+  ],
+  tracesSampleRate: 1.0,
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1.0,
+});
+
+import "./index.css"; // global reset + @keyframes spin + .rp-spinner classes
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { handleGoogleAuthRedirect } from "./lib/googleAuthPopup";
+import { StoreContext, useStoreProvider } from "./store";
+import App from "./App.jsx";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Cache data for 5 minutes before marking stale
+      staleTime: 5 * 60 * 1000,
+      // Keep unused data in cache for 10 minutes
+      gcTime: 10 * 60 * 1000,
+      // Don't hammer the API on every window focus
+      refetchOnWindowFocus: false,
+      // Retry once on failure, not 3 times (default)
+      retry: 1,
+    },
+  },
+});
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function Root() {
+  const store = useStoreProvider();
+  return (
+    <QueryClientProvider client={queryClient}>
+      <StoreContext.Provider value={store}>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </StoreContext.Provider>
+      {/* Only shows in dev — zero cost in production build */}
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
+  );
+}
+
+// This window may be the Google OAuth popup returning from accounts.google.com —
+// if so, relay the token to the opener and close instead of rendering the app.
+if (!handleGoogleAuthRedirect()) {
+  createRoot(document.getElementById("root")).render(
+    <StrictMode>
+      <Root />
+    </StrictMode>
+  );
+}

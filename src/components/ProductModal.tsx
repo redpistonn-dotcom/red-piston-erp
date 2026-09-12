@@ -1,0 +1,287 @@
+import { useState, useEffect, useCallback } from "react";
+import { T, FONT } from "../theme";
+import { uid, CATEGORIES, POSITIONS, ENGINE_TYPES, TRANSMISSIONS, EMOJIS, fmt, focusFirstError } from "../utils";
+import { searchCatalog, addInventory, contributePart } from "../api/inventory";
+import { Modal, Field, Input, Select, Divider, Btn } from "./ui";
+import { cleanHsn } from "../utils/validators";
+
+export function ProductModal({ open, onClose, product, products, onSave, toast, activeShopId, initialValues = null }) {
+    const isEdit = !!product;
+    const blank = { name: "", sku: "", hsnCode: "", category: "Engine", brand: "", vehicles: "", buyPrice: "", sellPrice: "", mrp: "", stock: "", minStock: "10", maxStock: "1000", reorderQty: "20", location: "", supplier: "", image: "📦", gstRate: "18", trackBatch: false, batchNumber: "", expiryDate: "", notes: "", oemNumber: "", position: "", engineType: "", transmission: "", condition: "New", warranty: "", globalSku: null };
+    const [f, setF] = useState(blank);
+    const [errors, setErrors] = useState({});
+    const [saving, setSaving] = useState(false);
+
+    // Global SKU search
+    const [showCatalogSearch, setShowCatalogSearch] = useState(false);
+    const [catalogSearch, setCatalogSearch] = useState("");
+    const [catalogResults, setCatalogResults] = useState([]);
+    const [catalogLoading, setCatalogLoading] = useState(false);
+
+    useEffect(() => {
+        setF(product ? { ...product, buyPrice: String(product.buyPrice), sellPrice: String(product.sellPrice), mrp: String(product.mrp || ""), stock: String(product.stock), minStock: String(product.minStock), maxStock: String(product.maxStock || 1000), reorderQty: String(product.reorderQty || 20), gstRate: String(product.gstRate || product.gst || 18), hsnCode: product.hsnCode || "", trackBatch: !!product.trackBatch, batchNumber: product.batchNumber || "", expiryDate: product.expiryDate || "", vehicles: product.vehicles || (product.compatibleVehicles || []).join(", "), oemNumber: product.oemNumber || "", position: product.position || "", engineType: product.engineType || "", transmission: product.transmission || "", condition: product.condition || "New", warranty: product.warranty || "", globalSku: product.globalSku || null, notes: product.description || "" } : initialValues ? { ...blank, ...initialValues } : blank);
+        setErrors({});
+        setShowCatalogSearch(false);
+        setCatalogSearch("");
+    }, [product, open]);
+
+    // Fetch catalog results from real API when catalog search query changes
+    useEffect(() => {
+        if (!showCatalogSearch || catalogSearch.length < 2) {
+            setCatalogResults([]);
+            return;
+        }
+        let cancelled = false;
+        setCatalogLoading(true);
+        searchCatalog({ q: catalogSearch, limit: 8 })
+            .then(res => {
+                if (!cancelled) setCatalogResults(res?.data || res || []);
+            })
+            .catch(() => { if (!cancelled) setCatalogResults([]); })
+            .finally(() => { if (!cancelled) setCatalogLoading(false); });
+        return () => { cancelled = true; };
+    }, [catalogSearch, showCatalogSearch]);
+
+    const set = k => v => setF(p => ({ ...p, [k]: v }));
+    const profit = f.buyPrice && f.sellPrice ? +f.sellPrice - +f.buyPrice : null;
+    const mg = profit !== null && +f.sellPrice > 0 ? ((profit / +f.sellPrice) * 100).toFixed(1) : null;
+
+    const validate = () => {
+        const e: Record<string, string> = {};
+        if (!f.name.trim()) e.name = "Required";
+        if (!f.sku.trim()) e.sku = "Required";
+        if (!f.buyPrice || isNaN(+f.buyPrice)) e.buyPrice = "Invalid";
+        else if (+f.buyPrice <= 0) e.buyPrice = "Must be greater than 0";
+        if (!f.sellPrice || isNaN(+f.sellPrice)) e.sellPrice = "Invalid";
+        else if (+f.sellPrice <= 0) e.sellPrice = "Must be greater than 0";
+        else if (+f.sellPrice < +f.buyPrice) e.sellPrice = "Sell price below buy price — margin will be negative";
+        if (f.stock === "" || isNaN(+f.stock)) e.stock = "Required";
+        else if (+f.stock < 0) e.stock = "Stock cannot be negative";
+        setErrors(e);
+        focusFirstError(e);
+        return !Object.keys(e).length;
+    };
+
+    const handleSelectCatalogItem = (item) => {
+        // Real API returns: partId, name, partNumber (sku), brand, category, oemNumber, mrp
+        setF(prev => ({
+            ...prev,
+            name: item.name,
+            sku: item.partNumber || item.sku || prev.sku,
+            category: item.category || prev.category,
+            brand: item.brand || prev.brand,
+            oemNumber: item.oemNumber || item.oem_part_no || prev.oemNumber,
+            globalSku: item.partId || item.id,
+            vehicles: prev.vehicles, // preserve existing vehicle compat — fitment is managed server-side
+            mrp: prev.mrp || String(Math.round((item.mrp || 1000) * 1.25)),
+            sellPrice: prev.sellPrice || String(item.mrp || 1000),
+            // Don't overwrite stock or buyPrice
+        }));
+        setCatalogResults([]);
+        setShowCatalogSearch(false);
+        toast(`Linked to Global Catalog: ${item.name}`, "info");
+    };
+
+    const handleSave = async () => {
+        if (!validate()) return;
+        // Duplicate SKU guard
+        const skuConflict = (products || []).some(
+            p => p.sku && p.sku.toLowerCase() === f.sku.toLowerCase() && p.id !== product?.id
+        );
+        if (skuConflict) {
+            setErrors(e => ({ ...e, sku: "SKU already exists. Use a unique SKU." }));
+            return;
+        }
+        setSaving(true);
+
+        // Normalized product fields for the local store.
+        const base = {
+            ...f, id: product?.id || "custom_" + uid(), shopId: product?.shopId || activeShopId,
+            buyPrice: +f.buyPrice, sellPrice: +f.sellPrice, mrp: +f.mrp || null, stock: +f.stock,
+            minStock: +f.minStock || 10, maxStock: +f.maxStock || 1000, reorderQty: +f.reorderQty || 20,
+            gstRate: +f.gstRate || 18, hsnCode: f.hsnCode || "", trackBatch: !!f.trackBatch,
+            batchNumber: f.batchNumber || "", expiryDate: f.expiryDate || "", oemNumber: f.oemNumber || "",
+            position: f.position || "", engineType: f.engineType || "", transmission: f.transmission || "",
+            condition: f.condition || "New", warranty: f.warranty || "", globalSku: f.globalSku,
+            inventoryId: product?.inventoryId, description: f.notes || null,
+        };
+
+        // EDIT: onSave → saveProducts → syncProductSave PUTs price/stock/image.
+        if (isEdit) {
+            onSave(base);
+            toast("Product updated!", "success");
+            setSaving(false);
+            onClose();
+            return;
+        }
+
+        // NEW: persist to the DB so it survives logout. Inventory rows require a
+        // masterPartId, so contribute a catalog part first (or reuse a linked
+        // globalSku), then create the shop inventory row with stock + supplier.
+        try {
+            let masterPartId = f.globalSku || null;
+            if (!masterPartId) {
+                const c: any = await contributePart({
+                    partName: f.name.trim(), brand: f.brand || undefined,
+                    categoryL1: f.category || "General", oemNumber: f.oemNumber || undefined,
+                    hsnCode: f.hsnCode || undefined, gstRate: +f.gstRate || 18,
+                    unitOfSale: "Piece", partType: "OEM",
+                    description: f.notes || undefined,
+                });
+                masterPartId = c?.part?.masterPartId ?? c?.masterPartId ?? null;
+            }
+            if (!masterPartId) throw new Error("Could not create catalog part");
+
+            const inv: any = await addInventory({
+                masterPartId,
+                sellingPrice: +f.sellPrice, buyingPrice: +f.buyPrice, mrp: +f.mrp || undefined,
+                stockQty: +f.stock || 0, rackLocation: f.location || null,
+                minStockAlert: +f.minStock || 5,
+                shopSpecificNotes: f.notes || undefined,
+                supplierName: f.supplier || undefined,
+            });
+            const inventoryId = inv?.item?.inventoryId ?? inv?.inventoryId ?? null;
+            onSave({ ...base, id: inventoryId || base.id, inventoryId, masterPartId, globalSku: masterPartId });
+            toast("Product added to inventory!", "success", "New Product");
+            onClose();
+        } catch (err: any) {
+            console.error("[ProductModal] DB save failed:", err);
+            // Keep the user's input locally so it isn't lost; warn that sync failed.
+            onSave(base);
+            toast(err?.data?.error || err?.message || "Saved locally — backend sync failed.", "warning");
+            onClose();
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <Modal open={open} onClose={onClose} title={isEdit ? "Edit Product" : "Add New Product"} subtitle={isEdit ? `SKU: ${product.sku}` : "Register a new product in your inventory"} width={680}>
+            <div style={{ marginBottom: 16 }}>
+                <Field label="Product Icon">
+                    {/* Photo upload lives in the marketplace "Go Live" step — adding
+                        inventory only picks a quick icon here. */}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                        {EMOJIS.map(e => (
+                            <button key={e} onClick={() => set("image")(e)} style={{ width: 34, height: 34, borderRadius: 7, border: `1.5px solid ${f.image === e ? T.amber : T.border}`, background: f.image === e ? T.amberGlow : "transparent", cursor: "pointer", fontSize: 17, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.12s" }}>{e}</button>
+                        ))}
+                    </div>
+                    <div style={{ fontSize: 11, color: T.t3, marginTop: 6 }}>📷 Add a product photo later from Parts Listing → Go Live.</div>
+                </Field>
+            </div>
+
+            {/* Catalog Linker */}
+            <div style={{ marginBottom: 20, padding: "14px", background: f.globalSku ? `${T.emerald}11` : T.surface, border: `1px solid ${f.globalSku ? T.emerald : T.border}`, borderRadius: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: f.globalSku ? T.emerald : T.t2, display: "flex", alignItems: "center", gap: 6 }}>
+                        {f.globalSku ? "✅ Linked to Global Catalog" : "🌐 Link to Global Catalog SKU (Optional)"}
+                    </div>
+                    {f.globalSku ? (
+                        <Btn size="xs" variant="ghost" onClick={() => set("globalSku")(null)}>Unlink</Btn>
+                    ) : (
+                        <Btn size="xs" variant={showCatalogSearch ? "ghost" : "amber"} onClick={() => setShowCatalogSearch(!showCatalogSearch)}>
+                            {showCatalogSearch ? "Cancel" : "🔍 Search Catalog"}
+                        </Btn>
+                    )}
+                </div>
+                {f.globalSku && (
+                    <div style={{ fontSize: 12, color: T.t3, fontFamily: FONT.mono }}>SKU ID: {f.globalSku}</div>
+                )}
+                {showCatalogSearch && !f.globalSku && (
+                    <div style={{ marginTop: 10 }}>
+                        <Input value={catalogSearch} onChange={setCatalogSearch} placeholder="Search master catalog by Name or SKU..." autoFocus />
+                        {catalogSearch.length >= 2 && (
+                            <div style={{ marginTop: 8, background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, maxHeight: 160, overflowY: "auto" }}>
+                                {catalogLoading && (
+                                    <div style={{ padding: "10px 12px", fontSize: 12, color: T.t3 }}>Searching catalog…</div>
+                                )}
+                                {!catalogLoading && catalogResults.length === 0 && (
+                                    <div style={{ padding: "10px 12px", fontSize: 12, color: T.t3 }}>No results found.</div>
+                                )}
+                                {!catalogLoading && catalogResults.map(m => (
+                                    <div key={m.partId || m.id} onClick={() => handleSelectCatalogItem(m)} className="row-hover" style={{ padding: "8px 12px", borderBottom: `1px solid ${T.border}`, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                        <div>
+                                            <div style={{ fontSize: 12, fontWeight: 700, color: T.t1 }}>{m.name}</div>
+                                            <div style={{ fontSize: 10, color: T.t3 }}>{m.brand} · {m.sku || m.partNumber}</div>
+                                        </div>
+                                        <Btn size="xs" variant="subtle">Select</Btn>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            <div className="inner-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <Field label="Part Name" required error={errors.name} style={{ gridColumn: "span 1" }}><Input name="name" value={f.name} onChange={set("name")} placeholder="Bosch Brake Pad Set — Front" invalid={!!errors.name} /></Field>
+                <Field label="OEM Part Number" hint="Original Equipment Manufacturer number"><Input value={f.oemNumber} onChange={set("oemNumber")} placeholder="e.g. 04465-02220" /></Field>
+                <Field label="SKU / Code" required error={errors.sku}><Input name="sku" value={f.sku} onChange={set("sku")} placeholder="BRK-F-0042" invalid={!!errors.sku} /></Field>
+                <Field label="HSN / SAC Code" hint="For GST filing"><Input value={f.hsnCode} onChange={(v: string) => set("hsnCode")(cleanHsn(v))} placeholder="87083000" /></Field>
+                <Field label="Category"><Select value={f.category} onChange={set("category")} options={CATEGORIES.map(c => ({ value: c, label: c }))} /></Field>
+                <Field label="Brand / Manufacturer"><Input value={f.brand} onChange={set("brand")} placeholder="Bosch, NGK…" /></Field>
+                <Field label="Supplier"><Input value={f.supplier} onChange={set("supplier")} placeholder="Supplier name" /></Field>
+                <Field label="Storage Location" hint="Rack / shelf code"><Input value={f.location} onChange={set("location")} placeholder="Rack A-12" /></Field>
+                <div style={{ gridColumn: "span 2" }}><Field label="Vehicle Compatibility"><Input value={f.vehicles} onChange={set("vehicles")} placeholder="Car — Swift, i20 / Bike — Splendor, Activa" disabled={!!f.globalSku} /></Field></div>
+
+                <Divider label="Offer Details" />
+                <div style={{ gridColumn: "span 2" }} />
+                <Field label="Condition"><Select value={f.condition} onChange={set("condition")} options={[{ value: "New", label: "New" }, { value: "Refurbished", label: "Refurbished" }, { value: "Used", label: "Used / Second Hand" }]} /></Field>
+                <Field label="Warranty" hint="e.g. 6 Months, 1 Year"><Input value={f.warranty} onChange={set("warranty")} placeholder="6 Months" /></Field>
+
+                <Divider label="Automobile Specs" />
+                <div style={{ gridColumn: "span 2" }} />
+                <Field label="Position"><Select value={f.position} onChange={set("position")} options={[{ value: "", label: "— None —" }, ...POSITIONS.map(v => ({ value: v, label: v }))]} /></Field>
+                <Field label="Engine Type"><Select value={f.engineType} onChange={set("engineType")} options={[{ value: "", label: "— None —" }, ...ENGINE_TYPES.map(v => ({ value: v, label: v }))]} /></Field>
+                <Field label="Transmission"><Select value={f.transmission} onChange={set("transmission")} options={[{ value: "", label: "— None —" }, ...TRANSMISSIONS.map(v => ({ value: v, label: v }))]} /></Field>
+
+                <div style={{ gridColumn: "span 2" }}><Field label="Notes / Description"><Input value={f.notes} onChange={set("notes")} placeholder="Any important notes" /></Field></div>
+
+                <Divider label="Pricing" />
+                <div style={{ gridColumn: "span 2" }} />
+                <Field label="Buying Price (₹)" required error={errors.buyPrice}><Input name="buyPrice" type="number" value={f.buyPrice} onChange={set("buyPrice")} placeholder="0" prefix="₹" invalid={!!errors.buyPrice} /></Field>
+                <Field label="Selling Price (₹)" required error={errors.sellPrice}><Input name="sellPrice" type="number" value={f.sellPrice} onChange={set("sellPrice")} placeholder="0" prefix="₹" invalid={!!errors.sellPrice} /></Field>
+                <Field label="MRP (₹)" hint="Maximum Retail Price"><Input type="number" value={f.mrp} onChange={set("mrp")} placeholder="0" prefix="₹" /></Field>
+
+                {profit !== null && (
+                    <div style={{ gridColumn: "span 2", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                        <div style={{ background: profit > 0 ? T.emeraldBg : T.crimsonBg, borderRadius: 10, padding: "10px 14px", textAlign: "center" }}>
+                            <div style={{ fontSize: 11, color: profit > 0 ? T.emerald : T.crimson, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>Profit/Unit</div>
+                            <div style={{ fontSize: 18, fontWeight: 800, color: profit > 0 ? T.emerald : T.crimson, fontFamily: FONT.mono }}>{fmt(profit)}</div>
+                        </div>
+                        <div style={{ background: T.amberGlow, borderRadius: 10, padding: "10px 14px", textAlign: "center" }}>
+                            <div style={{ fontSize: 11, color: T.amber, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>Margin</div>
+                            <div style={{ fontSize: 18, fontWeight: 800, color: T.amber, fontFamily: FONT.mono }}>{mg}%</div>
+                        </div>
+                    </div>
+                )}
+
+                <Divider label="Inventory" />
+                <div style={{ gridColumn: "span 2" }} />
+                <Field label={isEdit ? "Current Stock" : "Opening Stock"} required error={errors.stock}><Input name="stock" type="number" value={f.stock} onChange={set("stock")} placeholder="0" suffix="units" invalid={!!errors.stock} /></Field>
+                <Field label="Min Stock Alert" hint="Alert when stock drops below"><Input type="number" value={f.minStock} onChange={set("minStock")} placeholder="10" suffix="units" /></Field>
+                <Field label="Max Stock" hint="Maximum capacity"><Input type="number" value={f.maxStock} onChange={set("maxStock")} placeholder="1000" suffix="units" /></Field>
+                <Field label="Reorder Qty" hint="Auto PO quantity"><Input type="number" value={f.reorderQty} onChange={set("reorderQty")} placeholder="20" suffix="units" /></Field>
+
+                {/* Batch / Expiry Tracking */}
+                <div style={{ gridColumn: "span 2", display: "flex", gap: 14, alignItems: "center", padding: "10px 14px", background: T.surface, borderRadius: 10, border: `1px solid ${T.border}` }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, color: T.t1 }}>
+                        <input type="checkbox" checked={f.trackBatch} onChange={e => set("trackBatch")(e.target.checked)} style={{ accentColor: T.amber, width: 16, height: 16 }} />
+                        📦 Track Batch / Expiry
+                    </label>
+                    {f.trackBatch && (
+                        <>
+                            <Input value={f.batchNumber} onChange={set("batchNumber")} placeholder="Batch #" style={{ flex: 1 }} />
+                            <Input type="date" value={f.expiryDate} onChange={set("expiryDate")} style={{ width: 150 }} />
+                        </>
+                    )}
+                </div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 22, paddingTop: 18, borderTop: `1px solid ${T.border}` }}>
+                <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
+                <Btn variant="amber" loading={saving} onClick={handleSave}>💾 {isEdit ? "Save Changes" : "Add Product"}</Btn>
+            </div>
+        </Modal>
+    );
+}
+
