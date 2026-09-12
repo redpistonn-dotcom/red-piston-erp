@@ -36,6 +36,9 @@ export function getDefaultRoute(userOrRole) {
     return firstGranted || "/dashboard";
   }
   if (role === "MECHANIC") return "/mechanic";
-  if (role === "PLATFORM_ADMIN") return "/admin";
-  return "/marketplace";
+  // This app has no /admin or /marketplace (see AGENT_NOTES.md) — a CUSTOMER
+  // or PLATFORM_ADMIN account has nothing to land on here. Falling back to
+  // "/dashboard" at least resolves to a real route instead of looping the
+  // catch-all redirect against a route that doesn't exist.
+  return "/dashboard";
 }

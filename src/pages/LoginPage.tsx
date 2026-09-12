@@ -796,21 +796,19 @@ export default function LoginPage({ onLogin, isModal = false, defaultTab = "cust
           );
         }
 
-        // Non-modal: two role cards
+        // Non-modal: two role cards — this app is the Shop side of RedPiston
+        // (no customer marketplace, no admin console here — see AGENT_NOTES.md).
         return (
           <div className="auth-card">
             <div style={{ textAlign: "center", marginBottom: 28 }}>
-              <div style={S.heading}>Welcome to RedPiston</div>
-              <div style={{ fontSize: 15, color: "#9C8C7C", marginTop: 8, lineHeight: 1.5 }}>How would you like to continue?</div>
+              <div style={S.heading}>Welcome to RedPiston Shop</div>
+              <div style={{ fontSize: 15, color: "#9C8C7C", marginTop: 8, lineHeight: 1.5 }}>Sign in to run your shop, or register a new one.</div>
             </div>
 
             {/* Role cards */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 22 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 22 }}>
               {[
-                { key: "customer", emoji: "🚗", title: "Customer", desc: "Buy auto parts with fitment guarantee", cta: "Create Account",
-                  onSignIn: () => { setLandingTab("customer"); go(STEPS.SIGNIN); },
-                  onCreate: () => { setRole("customer"); setLandingTab("customer"); go(STEPS.REG_AUTH); } },
-                { key: "owner", emoji: "🏪", title: "Shop Owner", desc: "Manage your shop, billing & inventory", cta: "Register Shop",
+                { key: "owner", emoji: "🏪", title: "Shop Owner", desc: "Inventory, billing, staff & car-decor bookings", cta: "Register Shop",
                   onSignIn: () => { setLandingTab("owner"); go(STEPS.SIGNIN); },
                   onCreate: () => { setRole("shop"); setLandingTab("owner"); go(STEPS.REG_AUTH); } },
                 { key: "mechanic", emoji: "🔧", title: "Mechanic", desc: "Manage jobs, track clients & grow your workshop", cta: "Register",
@@ -834,18 +832,8 @@ export default function LoginPage({ onLogin, isModal = false, defaultTab = "cust
             </div>
 
             {/* Shop mechanic join (via invite code) */}
-            <div style={{ textAlign: "center", marginBottom: 12 }}>
+            <div style={{ textAlign: "center" }}>
               <a href="/mechanic/join" style={{ fontSize: 12, color: "#BFB0A0", textDecoration: "none" }}>Joining a shop via invite code? →</a>
-            </div>
-
-            {/* Admin access */}
-            <div style={{ textAlign: "center", paddingTop: 16, borderTop: "1px solid #E0D5C8" }}>
-              <button
-                style={{ background: "none", border: "none", color: "#BFB0A0", cursor: "pointer", fontSize: 11, fontFamily: FONT.mono, letterSpacing: "0.06em" }}
-                onClick={() => { setEmail(""); setPassword(""); go(STEPS.ADMIN_AUTH); }}
-              >
-                🛡️ PLATFORM ADMIN ACCESS
-              </button>
             </div>
           </div>
         );
@@ -1438,10 +1426,23 @@ export default function LoginPage({ onLogin, isModal = false, defaultTab = "cust
           {/* Headline — middle */}
           <div style={{ maxWidth: 380 }}>
             <div style={{ fontSize: 34, fontWeight: 800, color: "#e2e2e5", fontFamily: "'Plus Jakarta Sans','Inter',sans-serif", lineHeight: 1.15, marginBottom: 14, letterSpacing: "-0.02em" }}>
-              Precision Built for Industrial Excellence.
+              Your Shop's Complete Operating System.
             </div>
-            <div style={{ fontSize: 13, color: "#e3beb8", lineHeight: 1.6, maxWidth: 340 }}>
-              Access India's most complete auto parts platform — inventory, billing, fitment-guaranteed marketplace, and udhaar ledger.
+            <div style={{ fontSize: 13, color: "#e3beb8", lineHeight: 1.6, maxWidth: 340, marginBottom: 20 }}>
+              Inventory, GST billing, staff &amp; job cards, and car-decor bookings — everything to run your shop, in one dashboard.
+            </div>
+            {/* What you get — quick-scan feature list, replaces a wall of copy */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {[
+                { icon: "📦", label: "Inventory tracking with reorder alerts" },
+                { icon: "🧾", label: "GST-ready billing & invoice PDFs" },
+                { icon: "🔧", label: "Bookings, job cards & staff management" },
+              ].map(f => (
+                <div key={f.label} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ width: 28, height: 28, borderRadius: 8, background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }} aria-hidden="true">{f.icon}</span>
+                  <span style={{ fontSize: 12.5, color: "#e2e2e5", fontWeight: 500 }}>{f.label}</span>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -1563,10 +1564,10 @@ export default function LoginPage({ onLogin, isModal = false, defaultTab = "cust
         {!isModal && (step === STEPS.LANDING || step === STEPS.SIGNIN) && (
           <div style={{ width: "100%", maxWidth: 400, marginTop: 32, paddingTop: 24, borderTop: "1px solid #E0D5C8", textAlign: "center" }}>
             <div style={{ fontSize: 13, color: "#9C8C7C", marginBottom: 14 }}>
-              New to the platform?{" "}
+              New to RedPiston?{" "}
               <button
                 style={{ background: "none", border: "none", color: "#BE2B1A", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "'Inter', sans-serif" }}
-                onClick={() => go(STEPS.REG_ROLE)}
+                onClick={() => { setRole("shop"); setLandingTab("owner"); go(STEPS.REG_AUTH); }}
               >
                 Register a Shop
               </button>
@@ -1616,7 +1617,7 @@ export default function LoginPage({ onLogin, isModal = false, defaultTab = "cust
                 </div>
               </div>
               <p style={{ fontSize: 13, color: "#5C4F40", lineHeight: 1.65, maxWidth: 260, margin: "0 0 20px" }}>
-                India's trusted ERP for auto parts shops — billing, inventory &amp; fitment-guaranteed marketplace.
+                India's ERP for auto parts shops — billing, inventory, staff, and car-decor bookings, all in one place.
               </p>
               <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
                 {[
