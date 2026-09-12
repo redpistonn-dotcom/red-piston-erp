@@ -1426,17 +1426,17 @@ export default function LoginPage({ onLogin, isModal = false, defaultTab = "cust
           {/* Headline — middle */}
           <div style={{ maxWidth: 380 }}>
             <div style={{ fontSize: 34, fontWeight: 800, color: "#e2e2e5", fontFamily: "'Plus Jakarta Sans','Inter',sans-serif", lineHeight: 1.15, marginBottom: 14, letterSpacing: "-0.02em" }}>
-              Your Shop's Complete Operating System.
+              One App. Parts Shop or Service Business — or Both.
             </div>
             <div style={{ fontSize: 13, color: "#e3beb8", lineHeight: 1.6, maxWidth: 340, marginBottom: 20 }}>
-              Inventory, GST billing, staff &amp; job cards, and car-decor bookings — everything to run your shop, in one dashboard.
+              Whether you sell auto parts, run a car-decor &amp; detailing business, or both — this is the operating system for it.
             </div>
-            {/* What you get — quick-scan feature list, replaces a wall of copy */}
+            {/* What you get — two pillars promoted equally, not one buried in the other */}
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {[
-                { icon: "📦", label: "Inventory tracking with reorder alerts" },
-                { icon: "🧾", label: "GST-ready billing & invoice PDFs" },
-                { icon: "🔧", label: "Bookings, job cards & staff management" },
+                { icon: "📦", label: "Auto Parts ERP — inventory, GST billing & ledger" },
+                { icon: "🚗", label: "Car-Decor & Services — bookings, storefront & reviews" },
+                { icon: "🔧", label: "Job Cards & Staff — workshop, mechanics & team" },
               ].map(f => (
                 <div key={f.label} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ width: 28, height: 28, borderRadius: 8, background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }} aria-hidden="true">{f.icon}</span>
@@ -1617,7 +1617,7 @@ export default function LoginPage({ onLogin, isModal = false, defaultTab = "cust
                 </div>
               </div>
               <p style={{ fontSize: 13, color: "#5C4F40", lineHeight: 1.65, maxWidth: 260, margin: "0 0 20px" }}>
-                India's ERP for auto parts shops — billing, inventory, staff, and car-decor bookings, all in one place.
+                India's platform for auto parts ERP and car-decor &amp; service businesses — billing, inventory, bookings and staff, all in one place.
               </p>
               <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
                 {[
